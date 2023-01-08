@@ -124,31 +124,28 @@ hourly_intensities$time <- as.times(hourly_intensities$time)
 
 ```
 
-check for outliers
+To identify outliers i will create a boxplot then i will use the IQR method to remove outliers, since the dataset is small and I’m not sure it’s representative of the population of interest i decided to more conservative and remove only extreme outliers
 ```{r}
 
 boxplot(daily_activity$total_steps, outcol="red")
-#axis(side=2, at=seq(1, 30000, by=5000), )
 
-ggplot(data = daily_activity) + 
-  geom_boxplot(mapping = aes(x = total_steps), outlier.colour = "red", outlier.size = 5) +
-  theme(axis.text.x = element_text(angle = 45))
 
 ```
 IQR method
 ```{r}
+#daily activity total steps
 summary(daily_activity$total_steps)
-```
 
-
-```{r}
 IQR(daily_activity$total_steps)
-```
-```{r}
-Tmin = 3790 - (1.5 * 6937.25)
-Tmax = 10727 + (1.5 * 6937.25)
-out_l <- daily_activity$total_steps[which(daily_activity$total_steps < Tmin | daily_activity$total_steps > Tmax)]
-out_l
+
+Tmin = 3790 - (3 * 6937.25)
+Tmax = 10727 + (3 * 6937.25)
+
+#outliers
+da_out <- daily_activity$total_steps[which(daily_activity$total_steps < Tmin | daily_activity$total_steps > Tmax)]
+
+#remove outliers
+daily_activity <- daily_activity[(daily_activity$total_steps > Tmin & daily_activity$total_steps < Tmax),]
 ```
 
 
