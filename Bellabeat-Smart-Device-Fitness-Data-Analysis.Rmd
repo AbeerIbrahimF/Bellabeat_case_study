@@ -1,0 +1,178 @@
+---
+title: "Bellabeat Smart Device Fitness Data Analysis"
+author: "Abeer"
+date: "2022-12-19"
+output: html_document
+---
+
+
+![](/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/bellabeatTrademark.png)  
+
+
+### Business task:
+ Analyze non Bellabeat smart device usage data to identify trends. Then, using this information, make high-level recommendations for how these trends can inform Bellabeat marketing strategy.
+
+### Data Source:
+ FitBit Fitness Tracker Data (CC0: Public Domain, dataset made available through Mobius): This Kaggle data set contains personal fitness tracker from thirty fitbit users. Thirty eligible Fitbit users consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring. It includes information about daily activity, steps, and heart rate that can be used to explore users’ habits. The Data contains 18 files which are written in long format.
+
+### Data Limitations:
+Bellabeats products are for women and the Fitbit data doesn't specify gender, there is no demographic information and the data is limited (30 users only) therefor there could be a sampling bias.
+
+
+
+### Setting up the environment
+setting up my R environment by loading the following packages:
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(janitor)
+library(lubridate)
+library(tidyr)
+library(chron)
+library(gridExtra)
+```
+
+### Importing the data
+after inspecting the data in excel it appears that the `dailyCalories_merged.csv`, `dailyIntensities_merged.csv`, `dailySteps_merged.csv` have been merged into `dailyActivity_merged.csv`. So, I will only use `dailyActivity_merged.csv` and `sleepDay_merged.csv`
+```{r}
+daily_activity <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+daily_sleep <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+weight <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
+hourly_steps <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
+daily_intensities <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/dailyIntensities_merged.csv")
+hourly_intensities <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/hourlyIntensities_merged.csv")
+```
+
+### Data cleaning
+Take a look at the data & clean the columns names
+```{r}
+daily_activity <- daily_activity %>% clean_names()
+daily_sleep <- daily_sleep %>% clean_names()
+weight <- weight %>% clean_names()
+hourly_steps <- hourly_steps %>% clean_names()
+daily_intensities <- daily_intensities %>% clean_names()
+hourly_intensities <- hourly_intensities %>% clean_names()
+head(daily_activity)
+head(daily_sleep)
+head(weight)
+head(hourly_steps)
+head(daily_intensities)
+head(hourly_intensities)
+```
+
+how many users in each dataset? 
+```{r}
+n_distinct(daily_activity$id)
+n_distinct(daily_sleep$id)
+n_distinct(weight$id) # only 8 users therefore i will not use it 
+n_distinct(hourly_steps$id)
+n_distinct(daily_intensities$id)
+
+```
+
+
+check for missing and duplicate observations
+```{r}
+sum(is.na(daily_activity))
+sum(is.na(daily_sleep))
+sum(is.na(hourly_steps))
+sum(is.na(daily_intensities))
+sum(is.na(hourly_intensities))
+```
+```{r}
+sum(duplicated(daily_activity))
+sum(duplicated(daily_sleep))
+sum(duplicated(hourly_steps))
+sum(duplicated(daily_intensities))
+sum(duplicated(hourly_intensities))
+```
+
+
+remove duplicates from `daily_sleep`
+```{r}
+daily_sleep <- daily_sleep %>% distinct()
+sum(duplicated(daily_sleep))
+```
+
+
+we can see that the data type for date columns is char
+```{r}
+str(daily_activity)
+str(daily_sleep)
+str(hourly_steps)
+str(daily_intensities)
+str(hourly_intensities)
+```
+
+
+fix the date columns format (i will ignore the time in sleep_day since all observations are 12:00:00)
+```{r}
+daily_activity$activity_date <- as.Date(daily_activity$activity_date, "%m/%d/%y")
+daily_sleep$sleep_day <- as.Date(daily_sleep$sleep_day, "%m/%d/%y")
+daily_intensities$activity_day <- as.Date(daily_intensities$activity_day, "%m/%d/%y")
+
+#I will separate activity_hour column into date and time and then fix the data type
+hourly_steps <- separate(data = hourly_steps, col = activity_hour, into  = c('date', 'time'), sep = ' ')
+hourly_steps$date <- as.Date(hourly_steps$date, "%m/%d/%y")
+hourly_steps$time <- as.times(hourly_steps$time)
+
+hourly_intensities <- separate(data = hourly_intensities, col = activity_hour, into  = c('date', 'time'), sep = ' ')
+hourly_intensities$date <- as.Date(hourly_intensities$date, "%m/%d/%y")
+hourly_intensities$time <- as.times(hourly_intensities$time)
+
+```
+
+check for outliers
+```{r}
+
+boxplot(daily_activity$total_steps, outcol="red")
+#axis(side=2, at=seq(1, 30000, by=5000), )
+
+ggplot(data = daily_activity) + 
+  geom_boxplot(mapping = aes(x = total_steps), outlier.colour = "red", outlier.size = 5) +
+  theme(axis.text.x = element_text(angle = 45))
+
+```
+IQR method
+```{r}
+summary(daily_activity$total_steps)
+```
+
+
+```{r}
+IQR(daily_activity$total_steps)
+```
+```{r}
+Tmin = 3790 - (1.5 * 6937.25)
+Tmax = 10727 + (1.5 * 6937.25)
+out_l <- daily_activity$total_steps[which(daily_activity$total_steps < Tmin | daily_activity$total_steps > Tmax)]
+out_l
+```
+
+
+
+### Analysis
+hiiiiiii
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
