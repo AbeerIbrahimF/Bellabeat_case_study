@@ -142,7 +142,7 @@ Tmin = 3790 - (3 * 6937.25)
 Tmax = 10727 + (3 * 6937.25)
 
 #outliers
-da_out <- daily_activity$total_steps[which(daily_activity$total_steps < Tmin | daily_activity$total_steps > Tmax)]
+daily_activity$total_steps[which(daily_activity$total_steps < Tmin | daily_activity$total_steps > Tmax)]
 
 #remove outliers
 daily_activity <- daily_activity[(daily_activity$total_steps > Tmin & daily_activity$total_steps < Tmax),]
@@ -151,12 +151,54 @@ daily_activity <- daily_activity[(daily_activity$total_steps > Tmin & daily_acti
 
 
 ### Analysis
-hiiiiiii
+
+average steps per user
 ```{r}
+daily_steps_per_user <- daily_activity %>% 
+  group_by(id) %>% 
+  summarise(
+    record_count = n(),
+    total_steps = sum(total_steps),
+    total_calories = sum(calories))
+daily_steps_per_user
+
+#steps vs calories
+ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " Calories vs Steps", 
+         x = "Number of Steps", y = "Calories burned") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
+
+
 
 ```
 
+```{r}
+#sleep vs steps
+daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps")], by = c("id" = "id", "sleep_day" = "activity_date"))
 
+ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " sleep vs Steps", 
+         x = "Minutes asleep", y = "Number of steps") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
+  
+
+```
+
+```{r}
+#Steps vs time of the day
+```
+
+
+
+```{r}
+#intensities vs calories
+#create a new col lightly+fairly+very active
+daily_intensities_calories <- inner_join(daily_intensities, daily_activity[ , c("id", "activity_date", "total_steps")], by = c("id" = "id", "activity_day" = "activity_date"))
+
+
+```
 
 
 
