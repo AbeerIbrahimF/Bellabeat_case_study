@@ -175,7 +175,7 @@ ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + ge
 
 ```{r}
 #sleep vs steps
-daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps")], by = c("id" = "id", "sleep_day" = "activity_date"))
+daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes")], by = c("id" = "id", "sleep_day" = "activity_date"))
 
 ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " sleep vs Steps", 
          x = "Minutes asleep", y = "Number of steps") +
@@ -185,18 +185,38 @@ ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_ste
   
 
 ```
+```{r}
+#sleep vs time in bed
+ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Sleep vs Time in bed", x = "minutes in bed", y = "minutes asleep")
+
+```
+```{r}
+#steps vs time in bed
+ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_steps)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Steps vs Time in bed", x = "minutes in bed", y = "number of steps")
+
+
+```
+
+```{r}
+# sleep vs sedentary
+ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Sleep vs Sedentary", x = "sedentary minutes", y = "minutes asleep")
+
+```
 
 ```{r}
 #Steps vs time of the day
+
 ```
 
 
 
 ```{r}
+#fix
 #intensities vs calories
 #create a new col lightly+fairly+very active
-daily_intensities_calories <- inner_join(daily_intensities, daily_activity[ , c("id", "activity_date", "total_steps")], by = c("id" = "id", "activity_day" = "activity_date"))
+daily_activity$total_intensities_minutes <- sum(daily_activity$lightly_active_minutes, daily_activity$fairly_active_minutes, daily_activity$very_active_minutes)
 
+ggplot(data = daily_activity, mapping = aes(x = total_intensities_minutes, y = calories)) + geom_point() +geom_smooth(method = "ml") + theme_linedraw()
 
 ```
 
