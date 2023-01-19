@@ -158,8 +158,10 @@ daily_steps_per_user <- daily_activity %>%
   group_by(id) %>% 
   summarise(
     record_count = n(),
+    avg_steps = mean(total_steps),
     total_steps = sum(total_steps),
     total_calories = sum(calories))
+    
 daily_steps_per_user
 
 #steps vs calories
@@ -175,7 +177,8 @@ ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + ge
 
 ```{r}
 #sleep vs steps
-daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes")], by = c("id" = "id", "sleep_day" = "activity_date"))
+daily_activity <- daily_activity %>% mutate(total_intensities_minutes = rowSums(across(c(lightly_active_minutes, fairly_active_minutes, very_active_minutes))))
+daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes", "total_intensities_minutes")], by = c("id" = "id", "sleep_day" = "activity_date"))
 
 ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " sleep vs Steps", 
          x = "Minutes asleep", y = "Number of steps") +
@@ -211,16 +214,21 @@ ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minute
 
 
 ```{r}
+
 #fix
 #intensities vs calories
 #create a new col lightly+fairly+very active
-daily_activity$total_intensities_minutes <- sum(daily_activity$lightly_active_minutes, daily_activity$fairly_active_minutes, daily_activity$very_active_minutes)
 
-ggplot(data = daily_activity, mapping = aes(x = total_intensities_minutes, y = calories)) + geom_point() +geom_smooth(method = "ml") + theme_linedraw()
+
+ggplot(data = daily_activity, mapping = aes(x = total_intensities_minutes, y = calories)) + geom_point() +geom_smooth(method = "lm") + theme_linedraw()
 
 ```
 
 
+```{r}
+#intensities vs sleep
+ggplot(data = daily_sleep, mapping = aes(x = total_intensities_minutes, y = total_minutes_asleep)) + geom_point() +geom_smooth(method = "lm") + theme_linedraw()
+```
 
 
 
