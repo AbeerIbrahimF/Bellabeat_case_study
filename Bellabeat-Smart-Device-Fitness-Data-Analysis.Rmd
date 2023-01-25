@@ -114,9 +114,16 @@ daily_sleep$sleep_day <- as.Date(daily_sleep$sleep_day, "%m/%d/%y")
 daily_intensities$activity_day <- as.Date(daily_intensities$activity_day, "%m/%d/%y")
 
 #I will separate activity_hour column into date and time and then fix the data type
-hourly_steps <- separate(data = hourly_steps, col = activity_hour, into  = c('date', 'time'), sep = ' ')
+hourly_steps$activity_hour <- strptime(hourly_steps$activity_hour, "%m/%d/%Y %I:%M:%S %p")
+
+hourly_steps <- separate(data = hourly_steps, col = activity_hour, into  = c('date', 'hour'), sep = ' ')
+
 hourly_steps$date <- as.Date(hourly_steps$date, "%m/%d/%y")
-hourly_steps$time <- as.times(hourly_steps$time)
+
+hourly_steps$hour <- chron(times = hourly_steps$hour, format = "%H:%M")
+
+
+#hourly_steps$hour <- strftime(hourly_steps$time)
 
 hourly_intensities <- separate(data = hourly_intensities, col = activity_hour, into  = c('date', 'time'), sep = ' ')
 hourly_intensities$date <- as.Date(hourly_intensities$date, "%m/%d/%y")
@@ -154,6 +161,7 @@ daily_activity <- daily_activity[(daily_activity$total_steps > Tmin & daily_acti
 
 average steps per user
 ```{r}
+#what is it for?
 daily_steps_per_user <- daily_activity %>% 
   group_by(id) %>% 
   summarise(
@@ -176,11 +184,11 @@ ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + ge
 ```
 
 ```{r}
-#sleep vs steps
+#minutes asleep vs steps
 daily_activity <- daily_activity %>% mutate(total_intensities_minutes = rowSums(across(c(lightly_active_minutes, fairly_active_minutes, very_active_minutes))))
 daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes", "total_intensities_minutes")], by = c("id" = "id", "sleep_day" = "activity_date"))
 
-ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " sleep vs Steps", 
+ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " minutes asleep vs Steps", 
          x = "Minutes asleep", y = "Number of steps") +
     theme(plot.title = element_text(size = 12, hjust = 0.5),
           axis.title.x = element_text(size = 10),
@@ -189,8 +197,8 @@ ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_ste
 
 ```
 ```{r}
-#sleep vs time in bed
-ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Sleep vs Time in bed", x = "minutes in bed", y = "minutes asleep")
+#minutes asleep vs time in bed
+ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Minutes Asleep vs Time in bed", x = "minutes in bed", y = "minutes asleep")
 
 ```
 ```{r}
@@ -201,13 +209,18 @@ ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_steps)) 
 ```
 
 ```{r}
-# sleep vs sedentary
-ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Sleep vs Sedentary", x = "sedentary minutes", y = "minutes asleep")
+# minutes asleep vs sedentary
+ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "minutes asleep vs Sedentary", x = "sedentary minutes", y = "minutes asleep")
 
 ```
 
 ```{r}
 #Steps vs time of the day
+
+steps_time_trends <- hourly_steps %>% group_by(hour) %>% 
+  summarise(avg_steps_per_hour = mean(step_total)) %>% 
+  arrange(hour)
+ggplot(data = steps_time_trends, mapping = aes(x= hour, y = avg_steps_per_hour, group = 1 )) + geom_line() + theme(axis.text.x = element_text(angle = 45)) + labs(x = "Hour of the day", y = "average number of steps")
 
 ```
 
