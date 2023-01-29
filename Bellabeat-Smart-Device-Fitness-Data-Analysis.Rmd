@@ -2,7 +2,9 @@
 title: "Bellabeat Smart Device Fitness Data Analysis"
 author: "Abeer"
 date: "2022-12-19"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 
@@ -28,20 +30,16 @@ library(tidyverse)
 library(ggplot2)
 library(readr)
 library(janitor)
-library(lubridate)
-library(tidyr)
-library(chron)
 library(gridExtra)
 ```
 
 ### Importing the data
-after inspecting the data in excel it appears that the `dailyCalories_merged.csv`, `dailyIntensities_merged.csv`, `dailySteps_merged.csv` have been merged into `dailyActivity_merged.csv`. So, I will only use `dailyActivity_merged.csv` and `sleepDay_merged.csv`
+after inspecting the data in excel it appears that the `dailyCalories_merged.csv`, `dailyIntensities_merged.csv`, `dailySteps_merged.csv` have been merged into `dailyActivity_merged.csv`. So, I will only use the following:
 ```{r}
 daily_activity <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
 daily_sleep <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
 weight <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
 hourly_steps <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
-daily_intensities <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/dailyIntensities_merged.csv")
 hourly_intensities <- read.csv("/Users/Abeer/Desktop/Google Data Analytics/Bellabeat-Smart-Device-Fitness-Data-Analysis/Bellabeat-case-study/Fitabase Data 4.12.16-5.12.16/hourlyIntensities_merged.csv")
 ```
 
@@ -52,13 +50,11 @@ daily_activity <- daily_activity %>% clean_names()
 daily_sleep <- daily_sleep %>% clean_names()
 weight <- weight %>% clean_names()
 hourly_steps <- hourly_steps %>% clean_names()
-daily_intensities <- daily_intensities %>% clean_names()
 hourly_intensities <- hourly_intensities %>% clean_names()
 head(daily_activity)
 head(daily_sleep)
 head(weight)
 head(hourly_steps)
-head(daily_intensities)
 head(hourly_intensities)
 ```
 
@@ -68,7 +64,6 @@ n_distinct(daily_activity$id)
 n_distinct(daily_sleep$id)
 n_distinct(weight$id) # only 8 users therefore i will not use it 
 n_distinct(hourly_steps$id)
-n_distinct(daily_intensities$id)
 
 ```
 
@@ -78,14 +73,12 @@ check for missing and duplicate observations
 sum(is.na(daily_activity))
 sum(is.na(daily_sleep))
 sum(is.na(hourly_steps))
-sum(is.na(daily_intensities))
 sum(is.na(hourly_intensities))
 ```
 ```{r}
 sum(duplicated(daily_activity))
 sum(duplicated(daily_sleep))
 sum(duplicated(hourly_steps))
-sum(duplicated(daily_intensities))
 sum(duplicated(hourly_intensities))
 ```
 
@@ -102,7 +95,6 @@ we can see that the data type for date columns is char
 str(daily_activity)
 str(daily_sleep)
 str(hourly_steps)
-str(daily_intensities)
 str(hourly_intensities)
 ```
 
@@ -110,28 +102,18 @@ str(hourly_intensities)
 fix the date columns format (i will ignore the time in sleep_day since all observations are 12:00:00)
 ```{r}
 daily_activity$activity_date <- as.Date(daily_activity$activity_date, "%m/%d/%y")
+
 daily_sleep$sleep_day <- as.Date(daily_sleep$sleep_day, "%m/%d/%y")
-daily_intensities$activity_day <- as.Date(daily_intensities$activity_day, "%m/%d/%y")
 
-#I will separate activity_hour column into date and time and then fix the data type
 hourly_steps$activity_hour <- strptime(hourly_steps$activity_hour, "%m/%d/%Y %I:%M:%S %p")
+hourly_steps$hour <- strftime(hourly_steps$activity_hour, "%H:%M")
 
-hourly_steps <- separate(data = hourly_steps, col = activity_hour, into  = c('date', 'hour'), sep = ' ')
-
-hourly_steps$date <- as.Date(hourly_steps$date, "%m/%d/%y")
-
-hourly_steps$hour <- chron(times = hourly_steps$hour, format = "%H:%M")
-
-
-#hourly_steps$hour <- strftime(hourly_steps$time)
-
-hourly_intensities <- separate(data = hourly_intensities, col = activity_hour, into  = c('date', 'time'), sep = ' ')
-hourly_intensities$date <- as.Date(hourly_intensities$date, "%m/%d/%y")
-hourly_intensities$time <- as.times(hourly_intensities$time)
+hourly_intensities$activity_hour <- strptime(hourly_intensities$activity_hour, "%m/%d/%Y %I:%M:%S %p")
+hourly_intensities$hour <- strftime(hourly_steps$activity_hour, "%H:%M")
 
 ```
 
-To identify outliers i will create a boxplot then i will use the IQR method to remove outliers, since the dataset is small and I’m not sure it’s representative of the population of interest i decided to more conservative and remove only extreme outliers
+To identify outliers i will create a boxplot then i will use the IQR method to remove outliers, since the dataset is small and I’m not sure it’s representative of the population of interest i decided to be more conservative and remove only extreme outliers
 ```{r}
 
 boxplot(daily_activity$total_steps, outcol="red")
@@ -159,90 +141,125 @@ daily_activity <- daily_activity[(daily_activity$total_steps > Tmin & daily_acti
 
 ### Analysis
 
-average steps per user
-```{r}
-#what is it for?
-daily_steps_per_user <- daily_activity %>% 
-  group_by(id) %>% 
-  summarise(
-    record_count = n(),
-    avg_steps = mean(total_steps),
-    total_steps = sum(total_steps),
-    total_calories = sum(calories))
-    
-daily_steps_per_user
-
-#steps vs calories
-ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " Calories vs Steps", 
-         x = "Number of Steps", y = "Calories burned") +
-    theme(plot.title = element_text(size = 12, hjust = 0.5),
-          axis.title.x = element_text(size = 10),
-          axis.title.y = element_text(size = 10)) 
-
-
-
-```
 
 ```{r}
 #minutes asleep vs steps
-daily_activity <- daily_activity %>% mutate(total_intensities_minutes = rowSums(across(c(lightly_active_minutes, fairly_active_minutes, very_active_minutes))))
-daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes", "total_intensities_minutes")], by = c("id" = "id", "sleep_day" = "activity_date"))
 
-ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm") + theme_linedraw() +labs(title = " minutes asleep vs Steps", 
-         x = "Minutes asleep", y = "Number of steps") +
+#first i will use rowSums function to sum across rows and create total_intensities_distance column  
+daily_activity <- daily_activity %>% mutate(total_intensities_distance = rowSums(across(c(light_active_distance, moderately_active_distance, very_active_distance))))
+#now i will inner_join daily_sleep and daily_activity to create the plot 
+daily_sleep <- inner_join(daily_sleep, daily_activity[ , c("id", "activity_date", "total_steps", "sedentary_minutes", "total_intensities_distance")], by = c("id" = "id", "sleep_day" = "activity_date"))
+
+g1 <- ggplot(data = daily_sleep, mapping = aes(x = total_minutes_asleep, y = total_steps)) + geom_point()  + geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() +labs(title = " Steps vs Minutes asleep", 
+         x = "minutes asleep", y = "number of steps") +
     theme(plot.title = element_text(size = 12, hjust = 0.5),
           axis.title.x = element_text(size = 10),
           axis.title.y = element_text(size = 10)) 
   
-
-```
-```{r}
-#minutes asleep vs time in bed
-ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Minutes Asleep vs Time in bed", x = "minutes in bed", y = "minutes asleep")
-
-```
-```{r}
 #steps vs time in bed
-ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_steps)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "Steps vs Time in bed", x = "minutes in bed", y = "number of steps")
+g2 <- ggplot(data = daily_sleep,mapping = aes(x= total_time_in_bed, y = total_steps)) + geom_point() + geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() + labs(title = "Steps vs Time in bed", x = "minutes in bed", y = "number of steps") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
 
 
+
+
+g1grob <- ggplotGrob(g1)
+g2grob <- ggplotGrob(g2)
+
+grid.arrange(g1grob, g2grob, nrow = 1)
 ```
 
-```{r}
-# minutes asleep vs sedentary
-ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm") + theme_linedraw() + labs(title = "minutes asleep vs Sedentary", x = "sedentary minutes", y = "minutes asleep")
+Here i wanted to see if there is a correlation between number of steps with minutes asleep and minutes in bed, we can see that the data points follow no direction. This means there is no correlation.
 
-```
+
 
 ```{r}
 #Steps vs time of the day
-
 steps_time_trends <- hourly_steps %>% group_by(hour) %>% 
   summarise(avg_steps_per_hour = mean(step_total)) %>% 
   arrange(hour)
-ggplot(data = steps_time_trends, mapping = aes(x= hour, y = avg_steps_per_hour, group = 1 )) + geom_line() + theme(axis.text.x = element_text(angle = 45)) + labs(x = "Hour of the day", y = "average number of steps")
+ 
+g3 <- ggplot(data = steps_time_trends, mapping = aes(x= hour, y = avg_steps_per_hour, group = 1 )) + geom_line(color = "#fe8f77") + theme(axis.text.x = element_text(angle = 90)) + labs(x = "Hour of the day", y = "average number of steps") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
+
+#intensities vs time of the day
+intensity_time_trends <- hourly_intensities %>% group_by(hour) %>% 
+  summarise(avg_intensity_per_hour = mean(total_intensity)) %>% 
+  arrange(hour)
+
+g4 <- ggplot(data = intensity_time_trends, mapping = aes(x= hour, y= avg_intensity_per_hour, group = 1)) + geom_line(color = "#fe8f77") + theme(axis.text.x = element_text(angle = 90)) + labs(x = "Hour of the day", y = "average intensity") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
+
+g3grob <- ggplotGrob(g3)
+g4grob <- ggplotGrob(g4)
+
+grid.arrange(g3grob, g4grob, nrow = 1)
 
 ```
+
+we can see that users are the most active from 8 AM to 7 PM especially around break time for most 9-5 jobs.  
 
 
 
 ```{r}
 
-#fix
 #intensities vs calories
-#create a new col lightly+fairly+very active
+g5 <- ggplot(data = daily_activity, mapping = aes(x = total_intensities_distance, y = calories)) + geom_point() +geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() + labs(title = "Daily Calories vs Intensities", x= "intensity", y = "calories") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
 
 
-ggplot(data = daily_activity, mapping = aes(x = total_intensities_minutes, y = calories)) + geom_point() +geom_smooth(method = "lm") + theme_linedraw()
+#daily steps vs calories
+g6 <- ggplot(data = daily_activity, mapping = aes(x = total_steps, y = calories)) + geom_point() + geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() +labs(title = "Daily Calories vs Steps", 
+         x = "number of Steps", y = "calories") +
+    theme(plot.title = element_text(size = 12, hjust = 0.5),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10)) 
+g5grob <- ggplotGrob(g5)
+g6grob <- ggplotGrob(g6)
+
+grid.arrange(g5grob, g6grob, nrow = 1)
 
 ```
+
+As the intensity and number of steps increase, the calories burned also increases therefore there is a positive correlation.
 
 
 ```{r}
+# minutes asleep vs sedentary
+g7 <- ggplot(data = daily_sleep, mapping = aes(x = sedentary_minutes, y = total_minutes_asleep)) + geom_point() + geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() + labs(title = "Minutes asleep vs Sedentary", x = "sedentary minutes", y = "minutes asleep")
+
 #intensities vs sleep
-ggplot(data = daily_sleep, mapping = aes(x = total_intensities_minutes, y = total_minutes_asleep)) + geom_point() +geom_smooth(method = "lm") + theme_linedraw()
+
+g8 <- ggplot(data = daily_sleep, mapping = aes(x = total_intensities_distance, y = total_minutes_asleep)) + geom_point() +geom_smooth(method = "lm", color = "#fe8f77") + theme_linedraw() + labs(title = "Minutes asleep vs Intensities", x= "intensity", y = "minutes asleep") 
+
+g7grob <- ggplotGrob(g7)
+g8grob <- ggplotGrob(g8)
+
+
+grid.arrange(g7grob, g8grob, nrow = 1)
+
 ```
 
+we can see that there is a moderate negative correlation between minutes asleep and sedentary, meanwhile there is no correlation between minutes asleep and intensity.  
+
+
+### Conclusion
+Bellabeat products empower women with knowledge about their own health and habits, the target audience are women who live a healthy lifestyle.
+
+Recommendations:
+
+* Investigate about what is preventing users from using weight logging.
+* Send reminders around the most active hours to increase user engagement and encourage them to take a walk or remind them to drink water.
+* Reminders for users who want to improve their sleep to reduce sedentary time.
+* Reminders to increase greens intake per day.  
 
 
 
